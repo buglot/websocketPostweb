@@ -20,8 +20,8 @@ type UserWs struct {
 
 var onlineUsers = struct {
 	sync.RWMutex
-	Users map[uint]UserWs
-}{Users: make(map[uint]UserWs)}
+	Users map[uint]*websocket.Conn
+}{Users: make(map[uint]*websocket.Conn)}
 
 func parseToken(tokenStr string) (uint, error) {
 	hmacSampleSecret := []byte(os.Getenv("JWT_SECRAT_KEY"))
@@ -44,15 +44,8 @@ func SetupSocketRoutes(mux *http.ServeMux, db *gorm.DB) {
 		token := ws.Request().URL.Query().Get("token")
 		userID, _ := parseToken(token)
 		onlineUsers.Lock()
-		if _, exists := onlineUsers.Users[uint(userID)]; !exists {
-			onlineUsers.Users[uint(userID)] = &UserWs{
-				User:    ws,
-				Friends: []*websocket.Conn{}, // Initialize with empty friends list
-			}
-		} else {
-			// Update existing user with new WebSocket connection
-			onlineUsers.Users[uint(userID)].User = ws
-		}
+		onlineUsers.Users[uint(userID)] = ws
+
 		onlineUsers.Unlock()
 
 		fmt.Printf("User %d connected\n", userID)
@@ -63,9 +56,7 @@ func SetupSocketRoutes(mux *http.ServeMux, db *gorm.DB) {
 				break
 			}
 			fmt.Println("Message:", msg)
-
 		}
-
 		onlineUsers.Lock()
 		delete(onlineUsers.Users, uint(userID))
 		onlineUsers.Unlock()

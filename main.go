@@ -51,9 +51,10 @@ func main() {
 		for _, f := range follows {
 			followee := f.Followee
 			result = append(result, gin.H{
-				"id":       followee.ID,
 				"username": followee.Username,
+				"avatar":   followee.Avatar,
 				"online":   statusMap[followee.ID],
+				"url":      followee.Url,
 			})
 		}
 		ctx.JSON(200, result)

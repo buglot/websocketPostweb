@@ -43,7 +43,7 @@ func main() {
 		userID := lib.AnyToUInt(ctx.MustGet("userID"))
 
 		var follows []orm.Follow
-		model.Db.Preload("Followee").Where("follower_id = ?", userID).Find(&follows)
+		model.Db.Preload("Followee").Preload("User").Where("follower_id = ?", userID).Find(&follows)
 
 		statusMap := socket.GetFolloweesOnlineStatus(model.Db, userID)
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"sync"
 
 	"github.com/buglot/postAPI/lib"
@@ -14,10 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserWs struct {
+	User   *websocket.Conn
+	Friend map[uint]*websocket.Conn
+}
+
 var onlineUsers = struct {
 	sync.RWMutex
-	Users map[uint]*websocket.Conn
-}{Users: make(map[uint]*websocket.Conn)}
+	Users map[uint]UserWs
+}{Users: make(map[uint]UserWs)}
 
 func parseToken(tokenStr string) (uint, error) {
 	hmacSampleSecret := []byte(os.Getenv("JWT_SECRAT_KEY"))
@@ -38,10 +42,17 @@ func parseToken(tokenStr string) (uint, error) {
 func SetupSocketRoutes(mux *http.ServeMux, db *gorm.DB) {
 	mux.Handle("/ws", websocket.Handler(func(ws *websocket.Conn) {
 		token := ws.Request().URL.Query().Get("token")
-		userID, _ := strconv.ParseUint(token, 10, 64)
-
+		userID, _ := parseToken(token)
 		onlineUsers.Lock()
-		onlineUsers.Users[uint(userID)] = ws
+		if _, exists := onlineUsers.Users[uint(userID)]; !exists {
+			onlineUsers.Users[uint(userID)] = &UserWs{
+				User:    ws,
+				Friends: []*websocket.Conn{}, // Initialize with empty friends list
+			}
+		} else {
+			// Update existing user with new WebSocket connection
+			onlineUsers.Users[uint(userID)].User = ws
+		}
 		onlineUsers.Unlock()
 
 		fmt.Printf("User %d connected\n", userID)
@@ -52,6 +63,7 @@ func SetupSocketRoutes(mux *http.ServeMux, db *gorm.DB) {
 				break
 			}
 			fmt.Println("Message:", msg)
+
 		}
 
 		onlineUsers.Lock()

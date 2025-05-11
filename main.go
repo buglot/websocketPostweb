@@ -20,13 +20,13 @@ func main() {
 	err := godotenv.Load(".env")
 	model.InitDB()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		fmt.Println("Error loading .env file")
 	}
 	go func() {
 		mux := http.NewServeMux()
 		socket.SetupSocketRoutes(mux, model.Db)
-		fmt.Println("WebSocket server running at :8081")
-		if err := http.ListenAndServe(":8081", mux); err != nil {
+		fmt.Println("WebSocket server running at 0.0.0.0:8081")
+		if err := http.ListenAndServe("0.0.0.0:8081", mux); err != nil {
 			log.Fatal("WebSocket server error:", err)
 		}
 	}()
@@ -59,5 +59,5 @@ func main() {
 		}
 		ctx.JSON(200, result)
 	})
-	router.Run("localhost:8082")
+	router.Run("0.0.0.0:8082")
 }
